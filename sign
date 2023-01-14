@@ -1,0 +1,47 @@
+@app.route('/signup', methods=['POST'])
+def signup():
+    # Read the request body
+    data = request.get_json()
+
+    # Extract the username and password from the request body
+    username = data['username']
+    password = data['password']
+
+    # Hash the password
+    hashed_password = hash_password(password)
+
+    # Insert the new user into the database
+    with connection.cursor() as cursor:
+        query = f"INSERT INTO users (username, password) VALUES ('{username}', '{hashed_password}')"
+        cursor.execute(query)
+        connection.commit()
+
+    # Return a success response
+    return jsonify({'status': 'success'})
+
+@app.route('/login', methods=['POST'])
+def login():
+    # Read the request body
+    data = request.get_json()
+
+    # Extract the username and password from the request body
+    username = data['username']
+    password = data['password']
+
+    # Look up the user in the database
+    with connection.cursor() as cursor:
+        query = f"SELECT * FROM users WHERE username = '{username}'"
+        cursor.execute(query)
+        result = cursor.fetchone()
+
+    # If the user was not found, return a failure response
+    if result is None:
+        return jsonify({'status': 'failure'})
+
+    # If the user was found, check the password
+    if check_password(password, result['password']):
+        # If the password is correct, return a success response
+        return jsonify({'status': 'success'})
+    else:
+        # If the password is incorrect, return a failure response
+        return jsonify({'status': 'failure'})

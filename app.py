@@ -8,13 +8,14 @@ from email.mime.text import MIMEText
 from datetime import timedelta
 import random
 import string
+import jwt
 
 
 
-#create a secret key for the session
+
 
 app = Flask(__name__)
-
+#create a secret key for the session
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 # Set the expiration time of the session to 2 hours
 app.permanent_session_lifetime = timedelta(hours=2)
@@ -44,15 +45,12 @@ def send_email(recipient, scholarship_details):
                 </ul>
                 <p>This was sent from an API, I'm still learning and there is always room for improvements. \n</p>
                 <p>Thank you.\n</p>
-
             </body>
         </html>
     """, 'html')
     message['Subject'] = 'Scholarship Details sent from the Scholarship API'
- 
     # Send the email
     server.sendmail("hssn.oussema@gmail.com", recipient, message.as_string())
- 
     # Disconnect from the server
     server.quit()
 
@@ -128,7 +126,7 @@ def reset():
             send_new_password_email(email, new_password)
 
             # Return a success response
-            return "Password reset successfully"
+            return f"Password reset successfully and sent to your email {email}", 200
         else:
             # Return an error if the email does not exist
             return "Email does not exist", 404
@@ -305,7 +303,9 @@ def scholarships1(id):
     cursor = conn.cursor()
 
     if request.method == 'GET':
-        
+        #check if the user is logged in
+        if 'username' not in session:
+            return "You must login to view a scholarship", 401
         
         #get the scholarship from the database
         cursor.execute("SELECT * FROM scholarships WHERE id=?", (id,))
@@ -332,7 +332,7 @@ def scholarships1(id):
         creator = cursor.fetchone()[0]
         
         if creator != username:
-            return "You must be the creator of the scholarship to delete it, you are {username} and the creator is {creator}", 401
+            return f"You must be the creator of the scholarship to delete it, you are {username} and the creator is {creator}", 401
 
         #delete the scholarship
         cursor.execute("SELECT title FROM scholarships WHERE id=?", (id,))
@@ -359,7 +359,7 @@ def scholarships1(id):
         creator = cursor.fetchone()[0]
         
         if creator != username:
-            return "You must be the creator of the scholarship to update it, you are {username} and the creator is {creator}", 401
+            return f"You must be the creator of the scholarship to update it, you are {username} and the creator is {creator}", 401
 
 
         cursor.execute("SELECT Title FROM scholarships WHERE id=?", (id,))
@@ -459,7 +459,7 @@ def scholarships5(field, degree):
         now = datetime.datetime.now()
         
 
-        cursor.execute("SELECT * FROM scholarships WHERE field=? and degree=?", (field, degree))
+        cursor.execute("SELECT * FROM scholarships WHERE (field=? or field=?) and degree=?", (field,"All Subjects", degree))
         scholar = [
              dict(id=row[0], Title=row[1], Ammount=row[2], Institution=row[3], Degree=row[4], Field=row[5], Students=row[6], Location=row[7], Deadline=row[8])
                 for row in cursor.fetchall()
